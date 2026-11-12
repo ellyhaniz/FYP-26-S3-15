@@ -1,6 +1,6 @@
 # PlantDex
 
-**Every discovery becomes a collectible.** PlantDex is a mobile app for visitors to the
+**Every discovery becomes a collectible.** PlantDex is a lightweight image recognition mobile app for visitors to the
 Singapore Botanic Gardens. Point your phone at a plant or landmark, and PlantDex
 identifies it and unlocks a collectible card with its details. Staff manage the content
 through a web portal.
@@ -17,7 +17,7 @@ FYP-26-S3-15 · CSIT321
 - **Share** a discovery as a picture with the name, rarity and message on it
 - **Notifications** for new discoveries and new plants or landmarks to find
 
-**Staff portal (web)**
+**Staff portal (Web)**
 - **Researchers** manage botanical and architecture records
 - **System Admins** manage collectible cards and link each one to the model's scan label
 - **User Admins** manage staff accounts and roles
