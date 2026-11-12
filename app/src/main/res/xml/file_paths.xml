@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <cache-path
+        name="captured_photos"
+        path="captured_photos/" />
+    <!-- card pictures downloaded for sharing (VisitorSheets.share) -->
+    <cache-path
+        name="shared"
+        path="shared/" />
+</paths>
