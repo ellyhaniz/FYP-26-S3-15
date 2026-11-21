@@ -224,3 +224,10 @@ a.btn { display:block; text-align:center; text-decoration:none; }
 .table-compact td.name-cell { max-width:200px; }
 .table-compact td:last-child { white-space:nowrap; }
 
+
+/* ---------- Unidentified scan status pills ---------- */
+.pill-scan-NEW       { background:#fff2d6; color:#8a5a00; }
+.pill-scan-LABELLED  { background:#d7f0e0; color:#1b6b3a; }
+.pill-scan-DISMISSED { background:#e8eaea; color:#555; }
+.danger-zone { margin-top:1.8rem; padding-top:1.2rem; border-top:1px solid #e3ebe6; }
+.danger-zone .hint { margin:0 0 .6rem; }

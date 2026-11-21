@@ -290,6 +290,14 @@ class Collectible(models.Model):
         return record.common_name if self.botanical_record_id else record.name
 
     @property
+    def scannable(self):
+        """True if the current PlantDex model can recognise this card's scan label, i.e. a
+        visitor can actually unlock it. False for an empty label or a class the model was
+        never trained on (the card then stays locked for everyone)."""
+        from .classifier import model_labels     # imported here: classifier needs settings
+        return bool(self.model_label) and self.model_label in model_labels()
+
+    @property
     def linked_available(self):
         """False if the linked record was deleted or is no longer verified (Published)."""
         record = self.linked_record
@@ -316,3 +324,52 @@ class CollectibleUnlock(models.Model):
     def __str__(self):
         return f"{self.visitor_username} unlocked {self.collectible_id}"
 
+
+
+# ---------------------------------------------------------------------------
+# Unidentified scans: visitor photos that did not unlock a collectible
+# ---------------------------------------------------------------------------
+class UnidentifiedScan(models.Model):
+    """A visitor's photo that did not match any collectible. Written by /api/identify.
+
+    Researchers review these to see what visitors try to scan (ideas for new records and
+    collectibles) and to collect real photos for training the next model. Photos may show
+    people, so they are deleted after a set time: `manage.py purge_unidentified_scans`.
+    """
+    NO_MATCH = "NO_MATCH"
+    SUGGESTION = "SUGGESTION"
+    OUTCOMES = [
+        (NO_MATCH, "No match"),
+        (SUGGESTION, "Suggestion only"),   # a name was guessed, but there is no card for it
+    ]
+
+    NEW, LABELLED, DISMISSED = "NEW", "LABELLED", "DISMISSED"
+    STATUSES = [(NEW, "New"), (LABELLED, "Labelled"), (DISMISSED, "Dismissed")]
+
+    PLANT, LANDMARK, OTHER = "PLANT", "LANDMARK", "OTHER"
+    KINDS = [(PLANT, "Plant"), (LANDMARK, "Landmark"), (OTHER, "Other / not useful")]
+
+    photo = models.ImageField(upload_to="unidentified/%Y/%m/", storage=database_storage)
+    visitor_username = models.CharField(max_length=150, blank=True, db_index=True)
+    outcome = models.CharField(max_length=20, choices=OUTCOMES, default=NO_MATCH, db_index=True)
+    # What the PlantDex model thought it was, and how sure it was (empty if it didn't run)
+    model_label = models.CharField(max_length=60, blank=True)
+    model_score = models.FloatField(null=True, blank=True)
+    # The name shown to the visitor as a suggestion (Pl@ntNet or our model), if any
+    suggested_name = models.CharField(max_length=150, blank=True)
+    scanned_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    # Researcher review
+    status = models.CharField(max_length=10, choices=STATUSES, default=NEW, db_index=True)
+    kind = models.CharField(max_length=10, choices=KINDS, blank=True)
+    identified_as = models.CharField(max_length=150, blank=True)    # e.g. "Chrysanthemum"
+    notes = models.TextField(blank=True)
+    reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
+                                    on_delete=models.SET_NULL, related_name="+")
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-scanned_at"]
+
+    def __str__(self):
+        return f"Scan #{self.pk} {self.scanned_at:%Y-%m-%d %H:%M}"

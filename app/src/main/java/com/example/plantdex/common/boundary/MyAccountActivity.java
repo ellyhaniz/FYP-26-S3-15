@@ -59,7 +59,7 @@ public class MyAccountActivity extends AppCompatActivity {
         tvEmail.setText(email != null && !email.isEmpty() ? email : "—");
         tvMemberSince.setText(memberSince != null && !memberSince.isEmpty() ? memberSince : "—");
 
-        boolean visitor = Roles.VISITOR.equals(role);
+        boolean visitor = Roles.usesVisitorScreens(role);
         findViewById(R.id.groupDiscoveryProgress).setVisibility(visitor ? View.VISIBLE : View.GONE);
         if (visitor) {
             findViewById(R.id.tvAccountViewMore).setOnClickListener(v ->

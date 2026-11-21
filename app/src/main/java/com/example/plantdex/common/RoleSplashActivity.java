@@ -33,6 +33,8 @@ public class RoleSplashActivity extends AppCompatActivity {
             title = "VISITORS";
         } else if (role.equals(Roles.RESEARCHER)) {
             title = "RESEARCHERS";
+        } else if (Roles.isAdminPreview(role)) {
+            title = "ADMIN PREVIEW";
         } else {
             title = role;
         }

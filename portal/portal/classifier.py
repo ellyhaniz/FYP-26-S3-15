@@ -47,6 +47,27 @@ _lock = threading.Lock()
 _model = None   # (interpreter, labels) once loaded
 
 
+_labels_cache = (None, [])   # (labels.txt modified time, labels)
+
+
+def model_labels():
+    """The classes the current model can recognise, minus the "not in collection" class.
+    These are the only scan labels that can ever unlock a collectible. Empty if no model."""
+    global _labels_cache
+    try:
+        mtime = LABELS_FILE.stat().st_mtime
+    except OSError:
+        return []
+    if _labels_cache[0] != mtime:
+        labels = [l.strip() for l in LABELS_FILE.read_text(encoding="utf-8").splitlines() if l.strip()]
+        _labels_cache = (mtime, [l for l in labels if l != NOT_IN_COLLECTION])
+    return list(_labels_cache[1])
+
+
+def display_name(label):
+    return CLASS_INFO.get(label, {}).get("common") or label.replace("_", " ").title()
+
+
 def available():
     return MODEL_FILE.exists() and LABELS_FILE.exists()
 

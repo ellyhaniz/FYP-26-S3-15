@@ -15,14 +15,16 @@ import os
 
 import requests
 from django.contrib.auth.models import User
+from django.core.files.base import ContentFile
 from django.http import Http404, HttpResponse, JsonResponse
 from django.urls import path
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from . import classifier
 from .audit import log_action
-from .models import AuditLog, Collectible, CollectibleUnlock, StoredFile
+from .models import AuditLog, Collectible, CollectibleUnlock, StoredFile, UnidentifiedScan
 from .roles import get_role
 
 logger = logging.getLogger(__name__)
@@ -241,6 +243,13 @@ def _visitor(request):
     return User.objects.filter(pk=user_id).first() if user_id.isdigit() else None
 
 
+def _is_preview(user):
+    """System Admins can use the app to check how it looks ("admin preview"): they see
+    every card as unlocked, and their scans record no unlocks and save no unidentified
+    photos, so visitor numbers stay real and cards they test can still be deleted."""
+    return user is not None and get_role(user) == "System Admin"
+
+
 @require_http_methods(["GET"])
 def collectibles(request):
     """The collectible catalog. With ?userId=, each card also says whether that visitor
@@ -249,6 +258,9 @@ def collectibles(request):
     if not cards:
         return JsonResponse({"collectibles": STARTER_COLLECTIBLES})
     user = _visitor(request)
+    if _is_preview(user):     # every card shown as discovered, at the time it was added
+        return JsonResponse({"collectibles": [_collectible_json(request, c, c.created_at) for c in cards],
+                             "preview": True})
     unlocks = {} if user is None else dict(
         CollectibleUnlock.objects.filter(visitor_username=user.username)
         .values_list("collectible_id", "unlocked_at"))
@@ -278,11 +290,46 @@ def _unlock_for_scan(request, label):
     user = _visitor(request)
     if user is None:
         return _collectible_json(request, card), False
+    if _is_preview(user):     # show the card as unlocked, but record nothing
+        return _collectible_json(request, card, timezone.now()), False
     unlock, created = CollectibleUnlock.objects.get_or_create(collectible=card, visitor_username=user.username)
     return _collectible_json(request, card, unlock.unlocked_at), created
 
 
 # --------------------------------------------------------------- identify --
+def _save_unidentified(request, photo, model_guess, suggested_name=""):
+    """Keep a photo that unlocked no collectible, for researchers to review.
+    Never lets a storage problem break the visitor's scan."""
+    try:
+        photo.seek(0)
+        data = photo.read()
+        photo.seek(0)
+        user = _visitor(request)
+        if _is_preview(user):     # an admin testing the app: not a real visitor photo
+            return
+        ext = "png" if photo.content_type == "image/png" else "jpg"
+        scan = UnidentifiedScan(
+            visitor_username=user.username if user else "",
+            outcome=UnidentifiedScan.SUGGESTION if suggested_name else UnidentifiedScan.NO_MATCH,
+            model_label=model_guess["label"] if model_guess else "",
+            model_score=model_guess["score"] if model_guess else None,
+            suggested_name=suggested_name[:150],
+        )
+        scan.photo.save(f"scan.{ext}", ContentFile(data), save=True)
+    except Exception:
+        logger.exception("Could not save unidentified scan")
+
+
+def _plantnet_name(data):
+    """The name the app will show for a Pl@ntNet reply (common name, else scientific)."""
+    try:
+        species = data["results"][0]["species"]
+    except (KeyError, IndexError, TypeError):
+        return ""
+    common = species.get("commonNames") or []
+    return (common[0] if common else "") or species.get("scientificNameWithoutAuthor", "")
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def identify(request):
@@ -307,12 +354,16 @@ def identify(request):
     if (model_guess and model_guess["score"] >= MIN_MODEL_CONFIDENCE
             and model_guess["label"] != classifier.NOT_IN_COLLECTION):
         card, newly_unlocked = _unlock_for_scan(request, model_guess["label"])
+        if card is None:   # recognised, but no published card uses this label yet
+            _save_unidentified(request, photo, model_guess,
+                               model_guess["species"]["commonNames"][0])
         return JsonResponse({"source": "plantdex", "results": [model_guess],
                              "collectible": card, "newlyUnlocked": newly_unlocked})
 
     api_key = os.environ.get("PLANTNET_API_KEY")
     if not api_key:
         if model_guess:   # model unsure and no Pl@ntNet to ask: treat as no match
+            _save_unidentified(request, photo, model_guess)
             return JsonResponse({"source": "plantdex", "matched": False, "results": []})
         return JsonResponse({"error": "Pl@ntNet API key is missing."}, status=500)
 
@@ -327,6 +378,7 @@ def identify(request):
         return JsonResponse({"error": "Could not reach Pl@ntNet."}, status=502)
 
     if response.status_code == 404:
+        _save_unidentified(request, photo, model_guess)
         return JsonResponse({"matched": False, "results": []})
     if not response.ok:
         return JsonResponse({"error": "Pl@ntNet returned an error.", "status": response.status_code}, status=502)
@@ -334,6 +386,7 @@ def identify(request):
         data = response.json()
         if isinstance(data, dict):
             data["source"] = "plantnet"
+        _save_unidentified(request, photo, model_guess, _plantnet_name(data))
         return JsonResponse(data, safe=False)
     except ValueError:
         return JsonResponse({"error": "Invalid response from Pl@ntNet."}, status=502)

@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.plantdex.R;
 import com.example.plantdex.common.BottomNavHelper;
+import com.example.plantdex.common.CardImageLoader;
 import com.example.plantdex.common.Roles;
 import com.example.plantdex.common.entity.Collectible;
 import com.example.plantdex.visitor.control.CollectibleController;
@@ -98,8 +99,11 @@ public class VisitorDashboardActivity extends AppCompatActivity {
             ((TextView) findViewById(R.id.tvUnlockedDate))
                     .setText(DiscoveryStore.getUnlockedAt(this, recent.getId()));
             ((TextView) findViewById(R.id.tvDiscoveryCategory)).setText(recent.getCategory());
-            ((ImageView) findViewById(R.id.ivRecentIcon)).setImageResource(
+            ImageView recentIcon = findViewById(R.id.ivRecentIcon);
+            recentIcon.setImageResource(
                     "Architecture".equals(recent.getCategory()) ? R.drawable.ic_building : R.drawable.ic_leaf);
+            recentIcon.setClipToOutline(true);
+            CardImageLoader.load(recentIcon, recent.getImageUrl(), null);
         } else {
             name.setText("No discoveries yet");
             subtitle.setText("Scan a plant or landmark to unlock your first card");

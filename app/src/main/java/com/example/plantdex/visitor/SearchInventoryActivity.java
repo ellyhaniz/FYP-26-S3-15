@@ -7,6 +7,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
+import com.example.plantdex.common.CardImageLoader;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -133,8 +134,18 @@ public class SearchInventoryActivity extends AppCompatActivity {
         ((TextView) tile.findViewById(R.id.resultName)).setText(item.getName());
         ((TextView) tile.findViewById(R.id.resultSubtitle)).setText(
                 "Collectible #" + item.getId() + " · " + item.getCategory());
-        ((ImageView) tile.findViewById(R.id.resultIcon)).setImageResource(
+        ImageView icon = tile.findViewById(R.id.resultIcon);
+        icon.setImageResource(
                 "Architecture".equals(item.getCategory()) ? R.drawable.ic_building : R.drawable.ic_leaf);
+        if (discovered) {   // undiscovered cards keep their icon, so the picture isn't spoiled
+            View frame = tile.findViewById(R.id.resultIconFrame);
+            CardImageLoader.load(icon, item.getImageUrl(), () -> {
+                frame.setClipToOutline(true);
+                icon.setLayoutParams(new android.widget.FrameLayout.LayoutParams(
+                        android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                        android.widget.FrameLayout.LayoutParams.MATCH_PARENT));
+            });
+        }
 
         TextView status = tile.findViewById(R.id.resultStatus);
         if (discovered) {

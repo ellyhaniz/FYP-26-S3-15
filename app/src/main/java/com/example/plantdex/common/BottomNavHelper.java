@@ -115,6 +115,9 @@ public final class BottomNavHelper {
      */
     private static void tidyHeader(AppCompatActivity activity) {
         String username = Session.getUsername(activity);
+        if (username != null && !username.isEmpty() && Roles.isAdminPreview(Session.getRole(activity))) {
+            username = username + " · Admin preview";
+        }
         java.util.Set<String> placeholders = new java.util.HashSet<>(java.util.Arrays.asList(
                 activity.getString(R.string.visitor_id), activity.getString(R.string.researcher_id), "Role #ID"));
         tidyHeader(activity.findViewById(android.R.id.content), placeholders,

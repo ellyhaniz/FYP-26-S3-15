@@ -13,6 +13,23 @@
     <dt>Status</dt>
     <dd>{% if record.status == "PUBLISHED" %}<span class="pill pill-active">Published</span>
         {% else %}<span class="pill pill-draft">Draft</span>{% endif %}</dd>
+    <dt>Collectible</dt>
+    <dd>
+      {% if not collectible %}
+        <span class="pill pill-draft">No collectible yet</span>
+        <div class="hint">{% if record.status == "PUBLISHED" %}A System Admin can now create a collectible card for this record.{% else %}Publish this record first, then a System Admin can create a collectible card for it.{% endif %}</div>
+      {% else %}
+        {{ collectible.name }}
+        {% if collectible.status != "PUBLISHED" %}<span class="pill pill-draft">Draft</span>{% endif %}
+        {% if collectible.scannable %}
+          <span class="pill pill-active">Scannable</span>
+          <div class="hint">Visitors unlock this card by scanning it.</div>
+        {% else %}
+          <span class="pill pill-draft">Not scannable yet</span>
+          <div class="hint">The PlantDex model can't recognise this yet, so the card stays locked until the model is retrained with photos of it.</div>
+        {% endif %}
+      {% endif %}
+    </dd>
     <dt>Created</dt>
     <dd>{{ record.created_at|date:"d M Y, H:i" }}{% if record.created_by %} by {{ record.created_by.get_username }}{% endif %}</dd>
     <dt>Last updated</dt><dd>{{ record.updated_at|date:"d M Y, H:i" }}</dd>

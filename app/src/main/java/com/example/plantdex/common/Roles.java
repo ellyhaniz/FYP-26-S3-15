@@ -5,14 +5,16 @@ import com.example.plantdex.visitor.VisitorDashboardActivity;
 
 /**
  * Shared role constants and the dashboard each one lands on. Visitor and
- * Researcher have their own dashboards; User Admin and System Admin work in
- * the Django portal, so any other role falls back to the Visitor dashboard
- * here rather than crashing.
+ * Researcher have their own dashboards. System Admins may sign in to preview the
+ * visitor app (every card shown unlocked; their scans record nothing on the server).
+ * User Admins work only in the Django portal. Any other role falls back to the
+ * Visitor dashboard here rather than crashing.
  */
 public final class Roles {
 
     public static final String VISITOR = "VISITOR";
     public static final String RESEARCHER = "RESEARCHER";
+    public static final String SYSTEM_ADMIN = "SYSTEM ADMIN";
 
     private Roles() {}
 
@@ -22,6 +24,21 @@ public final class Roles {
             return ResearcherDashboardActivity.class;
         }
         return VisitorDashboardActivity.class;
+    }
+
+    /** Roles allowed to sign in to the app. */
+    public static boolean canUseApp(String role) {
+        return VISITOR.equals(role) || RESEARCHER.equals(role) || SYSTEM_ADMIN.equals(role);
+    }
+
+    /** A System Admin previewing the visitor app. */
+    public static boolean isAdminPreview(String role) {
+        return SYSTEM_ADMIN.equals(role);
+    }
+
+    /** Roles that get the visitor screens and features (collection progress, discoveries). */
+    public static boolean usesVisitorScreens(String role) {
+        return VISITOR.equals(role) || SYSTEM_ADMIN.equals(role);
     }
 
     /** Whether this role's bottom nav includes the camera / identify shortcut. */

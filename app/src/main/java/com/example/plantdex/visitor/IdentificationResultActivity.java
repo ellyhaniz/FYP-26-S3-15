@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.example.plantdex.R;
 import com.example.plantdex.common.BottomNavHelper;
 import com.example.plantdex.common.Roles;
+import com.example.plantdex.common.Session;
 import com.example.plantdex.common.entity.Collectible;
 
 //  display not identifly image using users live photo
@@ -21,6 +22,7 @@ import java.io.IOException;
 
 // Search  manually import
 import android.content.ActivityNotFoundException;
+import android.content.ClipData;
 import android.widget.Toast;
 
 
@@ -122,7 +124,10 @@ public class IdentificationResultActivity extends AppCompatActivity {
             String funFact = getIntent().getStringExtra(EXTRA_FUNFACT);
 
             boolean isNew = getIntent().getBooleanExtra(EXTRA_NEWLY_UNLOCKED, true);
-            ((TextView) findViewById(R.id.tvUnlockedBanner)).setText(isNew
+            ((TextView) findViewById(R.id.tvUnlockedBanner)).setText(
+                    Roles.isAdminPreview(Session.getRole(this))
+                    ? "✓ Matched (admin preview, not recorded) · " + name
+                    : isNew
                     ? "✓ New collectible unlocked · " + name + " · " + rarity
                     : "✓ Already in your inventory · " + name);
             ((TextView) findViewById(R.id.tvResultName)).setText(name);
@@ -161,7 +166,10 @@ public class IdentificationResultActivity extends AppCompatActivity {
 
 
     //open plant search (AKA search manually)
+    // No name to search for (no match): search with the photo itself in Google Lens.
     private void openPlantSearch(String name) {
+        if (name == null && searchPhotoWithGoogleLens()) return;
+
         String query = name == null || name.trim().isEmpty()
                 || "Unknown plant".equalsIgnoreCase(name.trim())
                 ? "plants Singapore Botanic Gardens"
@@ -179,6 +187,38 @@ public class IdentificationResultActivity extends AppCompatActivity {
         } catch (ActivityNotFoundException e) {
             Toast.makeText(this, "No browser app is available.", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    /** Shares the submitted photo to Google Lens (or the Google app, which opens Lens).
+     *  Falls back to a share sheet; returns false if nothing can take the photo. */
+    private boolean searchPhotoWithGoogleLens() {
+        String uriText = getIntent().getStringExtra(EXTRA_PHOTO_URI);
+        if (uriText == null || uriText.isEmpty()) return false;
+        Uri photo = Uri.parse(uriText);
+
+        for (String app : new String[]{"com.google.ar.lens", "com.google.android.googlequicksearchbox"}) {
+            try {
+                startActivity(imageSearchIntent(photo).setPackage(app));
+                return true;
+            } catch (ActivityNotFoundException ignored) {
+                // app not installed, try the next one
+            }
+        }
+        try {
+            startActivity(Intent.createChooser(imageSearchIntent(photo), "Search this photo with"));
+            return true;
+        } catch (ActivityNotFoundException e) {
+            return false;
+        }
+    }
+
+    private static Intent imageSearchIntent(Uri photo) {
+        Intent send = new Intent(Intent.ACTION_SEND);
+        send.setType("image/*");
+        send.putExtra(Intent.EXTRA_STREAM, photo);
+        send.setClipData(ClipData.newRawUri(null, photo));
+        send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        return send;
     }
 
 

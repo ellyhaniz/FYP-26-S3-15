@@ -1,0 +1,86 @@
+{% extends "portal/base.html" %}
+{% block title %}Unidentified Scans · PlantDex{% endblock %}
+{% block content %}
+<a class="muted" href="{% url 'dashboard' %}">← Back to dashboard</a>
+<h1>Unidentified Scans</h1>
+<p class="muted">Visitor photos that did not unlock a collectible. {{ new_count }} waiting for review.
+  Photos are deleted automatically after the retention period.</p>
+
+<form method="get" class="card filters">
+  <div>
+    <label>Status</label>
+    <select name="status">
+      <option value="">All</option>
+      {% for value, label in statuses %}
+        <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label>Result</label>
+    <select name="outcome">
+      <option value="">All</option>
+      {% for value, label in outcomes %}
+        <option value="{{ value }}" {% if filters.outcome == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label>Shows</label>
+    <select name="kind">
+      <option value="">All</option>
+      {% for value, label in kinds %}
+        <option value="{{ value }}" {% if filters.kind == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label>Search</label>
+    <input type="text" name="q" value="{{ filters.q }}" placeholder="name or visitor">
+  </div>
+  <div>
+    <label>From</label>
+    <input type="date" name="from" value="{{ filters.from }}">
+  </div>
+  <div>
+    <label>To</label>
+    <input type="date" name="to" value="{{ filters.to }}">
+  </div>
+  <div class="filter-btns">
+    <button class="btn-sm">Filter</button>
+    <a class="btn-sm btn-light" href="{% url 'unidentified_scan_list' %}">Clear</a>
+  </div>
+</form>
+
+<div class="card table-wrap">
+  <table>
+    <thead>
+      <tr><th>Photo</th><th>Scanned</th><th>Result</th><th>Model's guess</th><th>Identified as</th><th>Visitor</th><th>Status</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for scan in page %}
+      <tr>
+        <td><a href="{% url 'unidentified_scan_detail' scan.pk %}"><img class="thumb" src="{{ scan.photo.url }}" alt="Scan #{{ scan.pk }}" loading="lazy"></a></td>
+        <td>{{ scan.scanned_at|date:"d M Y, H:i" }}</td>
+        <td>{{ scan.get_outcome_display }}{% if scan.suggested_name %}<div class="hint">{{ scan.suggested_name }}</div>{% endif %}</td>
+        <td>{% if scan.model_label %}{{ scan.model_label }} <span class="muted">({{ scan.model_score|floatformat:2 }})</span>{% else %}—{% endif %}</td>
+        <td>{{ scan.identified_as|default:scan.get_kind_display|default:"—" }}</td>
+        <td>{{ scan.visitor_username|default:"—" }}</td>
+        <td><span class="pill pill-scan-{{ scan.status }}">{{ scan.get_status_display }}</span></td>
+        <td><a class="link" href="{% url 'unidentified_scan_detail' scan.pk %}">Review</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" class="empty">No unidentified scans found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if page.has_other_pages %}
+<div class="pager">
+  {% if page.has_previous %}<a href="?{{ querystring }}&page={{ page.previous_page_number }}">← Prev</a>{% endif %}
+  <span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+  {% if page.has_next %}<a href="?{{ querystring }}&page={{ page.next_page_number }}">Next →</a>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

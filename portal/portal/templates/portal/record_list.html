@@ -29,7 +29,7 @@
       <tr>
         <th></th>
         {% for heading, attr in cfg.columns %}<th>{{ heading }}</th>{% endfor %}
-        <th>Status</th><th>Updated</th><th></th>
+        <th>Status</th><th>Collectible</th><th>Updated</th><th></th>
       </tr>
     </thead>
     <tbody>
@@ -44,6 +44,11 @@
           {% if row.obj.status == "PUBLISHED" %}<span class="pill pill-active">Published</span>
           {% else %}<span class="pill pill-draft">Draft</span>{% endif %}
         </td>
+        <td>
+          {% if not row.collectible %}<span class="pill pill-draft">none yet</span>
+          {% elif row.collectible.scannable %}<span class="pill pill-active">scannable</span>
+          {% else %}<span class="pill pill-draft" title="The model can't recognise this yet, so the card stays locked">not scannable yet</span>{% endif %}
+        </td>
         <td>{{ row.obj.updated_at|date:"d M Y" }}</td>
         <td>
           <div class="row-actions">
@@ -54,7 +59,7 @@
         </td>
       </tr>
       {% empty %}
-      <tr><td colspan="{{ cfg.columns|length|add:4 }}" class="empty">
+      <tr><td colspan="{{ cfg.columns|length|add:5 }}" class="empty">
         {% if q %}No results found.{% else %}No records available yet.{% endif %}
       </td></tr>
       {% endfor %}

@@ -1,0 +1,46 @@
+{% extends "portal/base.html" %}
+{% block title %}Scan #{{ scan.pk }} · PlantDex{% endblock %}
+{% block content %}
+<a class="muted" href="{% url 'unidentified_scan_list' %}">← Back to unidentified scans</a>
+<h1>Scan #{{ scan.pk }}</h1>
+
+<div class="card form-card wide">
+  <a href="{{ scan.photo.url }}" target="_blank" rel="noopener"><img class="detail-img" src="{{ scan.photo.url }}" alt="Scan #{{ scan.pk }}"></a>
+  <dl class="details">
+    <dt>Scanned</dt><dd>{{ scan.scanned_at|date:"d M Y, H:i:s" }}</dd>
+    <dt>Visitor</dt><dd>{{ scan.visitor_username|default:"—" }}</dd>
+    <dt>Result</dt><dd>{{ scan.get_outcome_display }}</dd>
+    <dt>Shown to visitor</dt><dd>{{ scan.suggested_name|default:"Nothing (no match)" }}</dd>
+    <dt>Model's guess</dt>
+    <dd>{% if scan.model_label %}{{ scan.model_label }} · {% widthratio scan.model_score 1 100 %}% sure{% else %}—{% endif %}</dd>
+    <dt>Status</dt><dd><span class="pill pill-scan-{{ scan.status }}">{{ scan.get_status_display }}</span></dd>
+    {% if scan.reviewed_by %}
+    <dt>Last reviewed</dt><dd>{{ scan.reviewed_at|date:"d M Y, H:i" }} by {{ scan.reviewed_by.get_username }}</dd>
+    {% endif %}
+  </dl>
+
+  <h2>Review</h2>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="error">{{ form.non_field_errors.0 }}</div>{% endif %}
+    {% for field in form.visible_fields %}
+    <div class="field">
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {% if field.errors %}<div class="field-error">{{ field.errors.0 }}</div>{% endif %}
+    </div>
+    {% endfor %}
+    <div class="actions">
+      <button class="btn-sm">Save review</button>
+      <a class="btn-sm btn-light" href="{% url 'unidentified_scan_list' %}">Back to list</a>
+    </div>
+  </form>
+
+  <form method="post" action="{% url 'unidentified_scan_delete' scan.pk %}" class="danger-zone"
+        onsubmit="return confirm('Delete this scan and its photo permanently?');">
+    {% csrf_token %}
+    <p class="hint">Delete straight away if the photo shows a person or anything private.</p>
+    <button class="btn-sm btn-danger">Delete scan and photo</button>
+  </form>
+</div>
+{% endblock %}

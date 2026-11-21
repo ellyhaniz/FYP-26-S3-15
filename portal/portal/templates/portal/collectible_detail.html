@@ -20,6 +20,19 @@
         <div class="msg msg-warning inline-msg">The linked record is unavailable: it was deleted or is no longer Published. Visitors cannot unlock this card until you link a verified record.</div>
       {% endif %}
     </dd>
+    <dt>Scanning</dt>
+    <dd>
+      {% if collectible.scannable %}
+        <span class="pill pill-active">Scannable</span> <span class="muted">· scan label {{ collectible.model_label }}</span>
+      {% else %}
+        <span class="pill pill-draft">Not scannable yet</span>
+        <div class="msg msg-warning inline-msg">
+          {% if collectible.model_label %}The PlantDex model doesn't recognise the scan label "{{ collectible.model_label }}".{% else %}This card has no scan label.{% endif %}
+          Visitors can't unlock it by scanning, so it stays locked for everyone until the model is
+          retrained with photos of it and you choose its scan label.
+        </div>
+      {% endif %}
+    </dd>
     <dt>Unlocked by</dt>
     <dd>{{ unlock_count }} visitor{{ unlock_count|pluralize }}
       {% if recent_unlocks %}<div class="hint">Latest: {% for u in recent_unlocks %}{{ u.visitor_username }} ({{ u.unlocked_at|date:"d M Y" }}){% if not forloop.last %}, {% endif %}{% endfor %}</div>{% endif %}

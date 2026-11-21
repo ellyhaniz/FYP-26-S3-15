@@ -1,7 +1,7 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 from . import api, views, account_views, profile_views, error_log_views
-from . import collectible_views, file_views
+from . import collectible_views, file_views, unidentified_scan_views
 from .records import architecture, botanical
 
 urlpatterns = [
@@ -42,6 +42,13 @@ urlpatterns = [
     path("section/collectibles/<int:pk>/", collectible_views.collectible_detail, name="collectible_detail"),
     path("section/collectibles/<int:pk>/edit/", collectible_views.collectible_update, name="collectible_edit"),
     path("section/collectibles/<int:pk>/delete/", collectible_views.collectible_delete, name="collectible_delete"),
+
+    # Researcher / System Admin: visitor photos that matched no collectible
+    path("section/unidentified-scans/", unidentified_scan_views.scan_list, name="unidentified_scan_list"),
+    path("section/unidentified-scans/<int:pk>/", unidentified_scan_views.scan_detail,
+         name="unidentified_scan_detail"),
+    path("section/unidentified-scans/<int:pk>/delete/", unidentified_scan_views.scan_delete,
+         name="unidentified_scan_delete"),
 
     # Pictures stored in the database (collectible cards)
     path("files/<path:name>", file_views.stored_file, name="stored_file"),

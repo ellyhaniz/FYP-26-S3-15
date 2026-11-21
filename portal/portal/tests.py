@@ -82,9 +82,9 @@ class LoginTests(PortalTestCase):
 class AccessControlTests(PortalTestCase):
     def test_dashboard_cards_per_role(self):
         expected = {
-            "sysadmin": {"collectibles", "error-logs", "audit-logs"},
+            "sysadmin": {"collectibles", "error-logs", "unidentified-scans", "audit-logs"},
             "useradmin": {"accounts", "profile-types", "audit-logs"},
-            "researcher": {"botanical", "architecture", "audit-logs"},
+            "researcher": {"botanical", "architecture", "unidentified-scans", "audit-logs"},
         }
         for username, slugs in expected.items():
             c = client_for(username)

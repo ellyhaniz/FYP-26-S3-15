@@ -646,3 +646,56 @@ class SeedCollectiblesTests(CollectibleTestCase):
         call_command("seed_collectibles", "--clear", verbosity=0)
         call_command("seed_records", "--clear", verbosity=0)
         self.assertEqual(BotanicalRecord.objects.count(), 0)
+
+
+class NoFreeRecordsMessageTests(CollectibleTestCase):
+    MESSAGE = "Every record already has a collectible"
+
+    def test_shown_when_every_record_is_taken_or_draft(self):
+        self.collectible(record=self.botanical("Tembusu"))
+        self.botanical("Rain Tree", "Samanea saman", status="DRAFT")
+        self.assertContains(self.client.get("/section/collectibles/new/"), self.MESSAGE)
+
+    def test_hidden_when_a_published_record_is_free(self):
+        self.collectible(record=self.botanical("Tembusu"))
+        self.architecture("Burkill Hall")
+        self.assertNotContains(self.client.get("/section/collectibles/new/"), self.MESSAGE)
+
+    def test_hidden_when_editing_a_card_linked_to_the_only_record(self):
+        card = self.collectible(record=self.botanical("Tembusu"))
+        self.assertNotContains(self.client.get(f"/section/collectibles/{card.pk}/edit/"), self.MESSAGE)
+
+
+class RecordCollectibleStatusTests(CollectibleTestCase):
+    """Researchers see on their record pages whether a collectible exists and can be scanned."""
+    def setUp(self):
+        super().setUp()
+        self.client.logout()
+        self.login("researcher")
+
+    def test_record_without_collectible(self):
+        rec = self.botanical("Chrysanthemum", "C. morifolium")
+        r = self.client.get(f"/section/botanical/{rec.pk}/")
+        self.assertContains(r, "No collectible yet")
+        self.assertContains(r, "A System Admin can now create")
+        draft = self.botanical("Rain Tree", "Samanea saman", status="DRAFT")
+        self.assertContains(self.client.get(f"/section/botanical/{draft.pk}/"), "Publish this record first")
+
+    def test_record_with_unscannable_and_scannable_collectible(self):
+        rec = self.botanical("Chrysanthemum", "C. morifolium")
+        self.collectible(record=rec, name="Chrysanthemum card")
+        r = self.client.get(f"/section/botanical/{rec.pk}/")
+        self.assertContains(r, "Chrysanthemum card")
+        self.assertContains(r, "Not scannable yet")
+
+        gate = self.architecture("Tanglin Gate")
+        self.collectible(record=gate, name="Tanglin Gate", category=self.arch_cat, model_label="tanglin_gate")
+        self.assertContains(self.client.get(f"/section/architecture/{gate.pk}/"), "Scannable")
+
+    def test_list_shows_collectible_column(self):
+        self.collectible(record=self.botanical("Tembusu"))
+        self.botanical("Rain Tree", "Samanea saman")
+        r = self.client.get("/section/botanical/")
+        self.assertContains(r, "<th>Collectible</th>", html=False)
+        self.assertContains(r, "none yet", count=1)
+        self.assertContains(r, "not scannable yet", count=1)

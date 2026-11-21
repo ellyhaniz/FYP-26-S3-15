@@ -109,6 +109,32 @@ class ScanUnlockTests(CollectibleTestCase):
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, "already uses this scan label")
 
+    def test_scan_label_must_be_a_model_label(self):
+        record = self.botanical("Chrysanthemum", "Chrysanthemum morifolium")
+        r = self.client.post("/section/collectibles/new/", self.data(record, model_label="chrysanthemum"))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "doesn&#x27;t recognise this label")
+        self.assertFalse(Collectible.objects.filter(name="Tembusu card").exists())
+
+    def test_form_offers_model_labels_and_marks_used_ones(self):
+        r = self.client.get("/section/collectibles/new/")
+        self.assertContains(r, "Not scannable yet")
+        self.assertContains(r, "Golden Trumpet  (allamanda_cathartica)")
+        self.assertContains(r, "(used by &#x27;Tanglin Gate&#x27;)")
+        self.assertNotContains(r, 'value="other"')
+
+    def test_unlabelled_card_is_flagged_not_scannable(self):
+        card = self.collectible(name="Chrysanthemum", record=self.botanical("Chrysanthemum", "C. morifolium"))
+        self.assertTrue(self.card.scannable)
+        self.assertFalse(card.scannable)
+        self.assertContains(self.client.get(f"/section/collectibles/{card.pk}/"), "Not scannable yet")
+        self.assertContains(self.client.get("/section/collectibles/"), "not scannable yet", count=1)
+
+    def test_label_missing_from_new_model_is_kept_when_editing(self):
+        Collectible.objects.filter(pk=self.card.pk).update(model_label="old_gate")
+        r = self.client.get(f"/section/collectibles/{self.card.pk}/edit/")
+        self.assertContains(r, "old_gate  (not in the current model)")
+
 
 class SeedScanCollectiblesTests(CollectibleTestCase):
     def test_creates_one_card_per_model_class_and_is_repeatable(self):
@@ -144,3 +170,44 @@ class SeedScanCollectiblesTests(CollectibleTestCase):
         existing.refresh_from_db()
         self.assertEqual(existing.model_label, "tanglin_gate")
         self.assertEqual(Collectible.objects.filter(architecture_record=existing.architecture_record).count(), 1)
+
+
+class AdminPreviewTests(CollectibleTestCase):
+    """System Admins can preview the app: all cards shown unlocked, nothing recorded."""
+    def setUp(self):
+        super().setUp()
+        self.admin = User.objects.get(username="sysadmin")
+        self.card = self.collectible(name="Tanglin Gate", record=self.architecture("Tanglin Gate"),
+                                     category=self.arch_cat, model_label="tanglin_gate")
+        self.other = self.collectible(name="Tembusu", record=self.botanical("Tembusu"))
+
+    def scan(self, label, score, user):
+        with mock.patch("portal.api.classifier.available", return_value=True), \
+             mock.patch("portal.api.classifier.classify", return_value=[(label, score)]):
+            return self.client.post("/api/identify", {"image": photo(), "userId": str(user.pk)}).json()
+
+    def test_catalog_shows_every_card_discovered(self):
+        r = self.client.get(f"/api/collectibles?userId={self.admin.pk}").json()
+        self.assertTrue(r["preview"])
+        self.assertTrue(all(c["discovered"] and c["unlockedAt"] for c in r["collectibles"]))
+        self.assertEqual(len(r["collectibles"]), 2)
+
+    def test_scan_shows_card_but_records_no_unlock(self):
+        r = self.scan("tanglin_gate", 0.95, self.admin)
+        self.assertEqual(r["collectible"]["name"], "Tanglin Gate")
+        self.assertIsNotNone(r["collectible"]["unlockedAt"])
+        self.assertFalse(r["newlyUnlocked"])
+        self.assertFalse(CollectibleUnlock.objects.exists())
+
+    def test_unmatched_scan_is_not_saved(self):
+        from .models import UnidentifiedScan
+        with mock.patch.dict("os.environ", {}, clear=True):
+            self.scan("costus", 0.3, self.admin)
+        self.assertFalse(UnidentifiedScan.objects.exists())
+
+    def test_researcher_is_not_in_preview(self):
+        researcher = User.objects.get(username="researcher")
+        r = self.client.get(f"/api/collectibles?userId={researcher.pk}").json()
+        self.assertNotIn("preview", r)
+        self.scan("tanglin_gate", 0.95, researcher)
+        self.assertTrue(CollectibleUnlock.objects.filter(visitor_username="researcher").exists())

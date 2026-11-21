@@ -8,6 +8,7 @@ SECTIONS = {
     "error-logs":    {"title": "Error Logs",              "desc": "Failed card unlocks and handbook sync issues.", "roles": ["System Admin"]},
     "botanical":     {"title": "Botanical Records",       "desc": "Maintain plant records.", "roles": ["Researcher"]},
     "architecture":  {"title": "Architecture Records",    "desc": "Maintain heritage structure records.", "roles": ["Researcher"]},
+    "unidentified-scans": {"title": "Unidentified Scans", "desc": "Visitor photos that matched no collectible.", "roles": ["Researcher", "System Admin"]},
     "audit-logs":    {"title": "Audit Logs",              "desc": "Read-only record of administrative actions.", "roles": ROLES},
 }
 

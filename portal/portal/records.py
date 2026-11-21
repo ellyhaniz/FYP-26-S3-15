@@ -82,7 +82,7 @@ def make_views(cfg):
     @gate
     def record_list(request):
         q = request.GET.get("q", "").strip()
-        records = cfg.model.objects.all()
+        records = cfg.model.objects.select_related("collectible")
         if q:
             query = Q()
             for field in cfg.search_fields:
@@ -90,7 +90,8 @@ def make_views(cfg):
             records = records.filter(query)
 
         page = Paginator(records, PAGE_SIZE).get_page(request.GET.get("page"))
-        rows = [{"obj": obj, "cells": [getattr(obj, attr) for _, attr in cfg.columns]}
+        rows = [{"obj": obj, "cells": [getattr(obj, attr) for _, attr in cfg.columns],
+                 "collectible": getattr(obj, "collectible", None)}
                 for obj in page.object_list]
         params = request.GET.copy()
         params.pop("page", None)
@@ -119,8 +120,10 @@ def make_views(cfg):
         if obj is None:
             return redirect(cfg.url_list)
         fields = [(label, getattr(obj, attr)) for label, attr in cfg.detail_fields]
+        # The card a System Admin made for this record, if any (read-only for Researchers)
+        collectible = getattr(obj, "collectible", None)
         return render(request, "portal/record_detail.html", ctx(
-            request, record=obj, fields=fields, name=name_of(obj)))
+            request, record=obj, fields=fields, name=name_of(obj), collectible=collectible))
 
     # ---- update (RS-06 / RS-11) --------------------------------------------
     @gate

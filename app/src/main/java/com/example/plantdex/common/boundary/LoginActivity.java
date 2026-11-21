@@ -68,11 +68,10 @@ public class LoginActivity extends AppCompatActivity {
             public void onSuccess(User user) {
                 setLoading(false);
 
-                // Visitors and Researchers use this app — User Admin and System Admin
-                // accounts belong on the Django management portal. AuthController
-                // already saved the session before calling us, so undo that and bounce
-                // rather than send an admin into the Visitor dashboard.
-                if (!Roles.VISITOR.equals(user.getRole()) && !Roles.RESEARCHER.equals(user.getRole())) {
+                // Visitors and Researchers use this app, and System Admins may preview it.
+                // User Admin accounts belong on the Django management portal. AuthController
+                // already saved the session before calling us, so undo that and bounce.
+                if (!Roles.canUseApp(user.getRole())) {
                     Session.clear(LoginActivity.this);
                     Toast.makeText(LoginActivity.this,
                             "Admin accounts should sign in on the PlantDex management website.",
@@ -81,7 +80,11 @@ public class LoginActivity extends AppCompatActivity {
                     return;
                 }
 
-                Toast.makeText(LoginActivity.this, "Welcome back!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(LoginActivity.this,
+                        Roles.isAdminPreview(user.getRole())
+                                ? "Admin preview: every card is shown unlocked and scans aren't recorded."
+                                : "Welcome back!",
+                        Roles.isAdminPreview(user.getRole()) ? Toast.LENGTH_LONG : Toast.LENGTH_SHORT).show();
                 Intent intent = new Intent(LoginActivity.this, RoleSplashActivity.class);
                 intent.putExtra(RoleSplashActivity.EXTRA_ROLE, user.getRole());
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);

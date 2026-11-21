@@ -67,7 +67,7 @@ public class NotificationsActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (!Roles.VISITOR.equals(role)) {
+        if (!Roles.usesVisitorScreens(role)) {
             show(new ArrayList<>(), null);
             return;
         }
@@ -91,7 +91,7 @@ public class NotificationsActivity extends AppCompatActivity {
         if (joined != null) {
             items.add(new Item(joined.atStartOfDay(), false, R.drawable.ic_person_outline,
                     "Welcome to PlantDex!",
-                    Roles.VISITOR.equals(role)
+                    Roles.usesVisitorScreens(role)
                             ? "Your account was created. Scan plants and landmarks in the gardens to start your collection."
                             : "Your account was created.",
                     null));

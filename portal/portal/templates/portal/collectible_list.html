@@ -61,7 +61,9 @@
       {% for c in page %}
       <tr>
         <td><img class="thumb" src="{{ c.image.url }}" alt=""></td>
-        <td class="wrap name-cell"><strong>{{ c.name }}</strong></td>
+        <td class="wrap name-cell"><strong>{{ c.name }}</strong>
+          {% if not c.scannable %}<div><span class="pill pill-draft" title="The PlantDex model can't recognise this card, so visitors can't unlock it">not scannable yet</span></div>{% endif %}
+        </td>
         <td>{{ c.category.name }}</td>
         <td><span class="pill pill-rarity-{{ c.rarity }}">{{ c.get_rarity_display }}</span></td>
         <td class="wrap">

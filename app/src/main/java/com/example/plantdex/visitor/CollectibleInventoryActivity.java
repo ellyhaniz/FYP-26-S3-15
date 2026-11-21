@@ -4,6 +4,8 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.FrameLayout;
+import com.example.plantdex.common.CardImageLoader;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -203,7 +205,17 @@ public class CollectibleInventoryActivity extends AppCompatActivity {
         int icon = "Architecture".equals(item.getCategory()) ? R.drawable.ic_building : R.drawable.ic_leaf;
         ((TextView) tile.findViewById(R.id.tileName)).setText(item.getName());
         ((TextView) tile.findViewById(R.id.tileRarity)).setText(item.getRarity());
-        ((ImageView) tile.findViewById(R.id.tileIcon)).setImageResource(icon);
+        ImageView picture = tile.findViewById(R.id.tileIcon);
+        picture.setImageResource(icon);
+        // Swap the leaf / building icon for the card's own picture once it has loaded.
+        View frame = tile.findViewById(R.id.tileIconFrame);
+        CardImageLoader.load(picture, item.getImageUrl(), () -> {
+            int height = Math.round(96 * getResources().getDisplayMetrics().density);
+            frame.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, height));
+            frame.setClipToOutline(true);
+            picture.setLayoutParams(new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        });
         tile.setOnClickListener(v -> startActivity(CollectibleCardActivity.discovered(this, item)));
         return tile;
     }

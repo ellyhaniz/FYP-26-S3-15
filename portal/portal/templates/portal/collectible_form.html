@@ -15,6 +15,10 @@
   {% if unlock_count %}
   <div class="msg msg-warning">{{ unlock_count }} visitor{{ unlock_count|pluralize }} already unlocked this collectible. Any change you save is shown to them as well.</div>
   {% endif %}
+  {% if form.no_free_records %}
+  <div class="msg msg-warning">Every record already has a collectible (or is still a Draft), so there is nothing to link a new card to.
+    Ask a Researcher to add a Botanical or Architecture record for the new plant or landmark and set it to Published first.</div>
+  {% endif %}
   {% if form.non_field_errors %}<div class="error">{{ form.non_field_errors.0 }}</div>{% endif %}
 
   {% for field in form.visible_fields %}

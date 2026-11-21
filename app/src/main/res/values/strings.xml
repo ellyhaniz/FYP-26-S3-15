@@ -35,5 +35,6 @@
     </string-array>
 
     <string name="feature_coming_soon">Coming soon</string>
-    <string name="no_plant_identified">No plant identified in this photo. Try another photo.</string>
+    <string name="no_plant_identified">Photo does not match any plant or landmark in our collection. Please try another photo.</string>
+    <string name="unmatched_photo_notice">Photos that don\'t match our collection may be kept for up to 90 days to help us improve PlantDex. Avoid photographing people.</string>
 </resources>

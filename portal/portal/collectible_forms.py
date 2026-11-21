@@ -1,5 +1,6 @@
 from django import forms
 
+from . import classifier
 from .forms import LineBreakTextarea, RecordForm, tidy, tidy_block
 from .models import (ArchitectureRecord, BotanicalRecord, Collectible, CollectibleCategory)
 
@@ -24,16 +25,17 @@ class CollectibleForm(RecordForm):
         fields = ["name", "category", "rarity", "description", "image", "status", "model_label"]
         labels = {"name": "Collectible name", "category": "Category", "rarity": "Rarity level",
                   "description": "Description", "image": "Card image",
-                  "model_label": "Scan label (optional)"}
+                  "model_label": "Scan label"}
         widgets = {
             "description": LineBreakTextarea(attrs={"rows": 4}),
             "image": forms.FileInput(attrs={"accept": "image/jpeg,image/png,image/webp"}),
         }
         help_texts = {
             "image": "JPG, PNG or WebP, up to 5 MB. When editing, leave empty to keep the current image.",
-            "model_label": "The PlantDex model's class name for this plant or structure, exactly as in "
-                           "labels.txt (e.g. tanglin_gate). Visitors unlock the card by scanning it. "
-                           "Leave empty if the model does not recognise it yet.",
+            "model_label": "What the PlantDex model calls this plant or structure. Visitors unlock the "
+                           "card by scanning it. If it isn't in the list, the model wasn't trained on "
+                           "it: choose \"Not scannable yet\" and the card stays locked until the "
+                           "model is retrained with photos of it.",
         }
 
     def __init__(self, *args, **kwargs):
@@ -44,8 +46,24 @@ class CollectibleForm(RecordForm):
         if self.instance.pk:                      # editing: preselect the current link
             kind = "b" if self.instance.botanical_record_id else "a"
             self.initial["linked_record"] = f"{kind}:{self.instance.linked_record.pk}"
+        self.fields["model_label"].widget = forms.Select(choices=self._label_choices())
         self.order_fields(["name", "linked_record", "category", "rarity",
                            "description", "image", "status", "model_label"])
+
+    def _label_choices(self):
+        """The model's labels, marked when another card already uses one. A label the
+        current model no longer has is kept as an option so editing doesn't drop it."""
+        used = dict(Collectible.objects.exclude(model_label="").exclude(pk=self.instance.pk)
+                    .values_list("model_label", "name"))
+        labels = classifier.model_labels()
+        choices = [("", "Not scannable yet (model doesn't recognise it)")]
+        for label in sorted(labels, key=classifier.display_name):
+            text = f"{classifier.display_name(label)}  ({label})"
+            choices.append((label, f"{text}  (used by '{used[label]}')" if label in used else text))
+        current = self.instance.model_label
+        if current and current not in labels:
+            choices.append((current, f"{current}  (not in the current model)"))
+        return choices
 
     # ---- the drop-down ----------------------------------------------------
     def _record_choices(self):
@@ -64,10 +82,17 @@ class CollectibleForm(RecordForm):
                 return f"{text}  (already has a collectible)"
             return text
 
+        botanical_records = list(BotanicalRecord.objects.order_by("common_name"))
+        architecture_records = list(ArchitectureRecord.objects.order_by("name"))
+        # Nothing can be linked: every record is a Draft or already has a collectible.
+        self.no_free_records = not (
+            any(r.status == "PUBLISHED" and r.pk not in taken_b for r in botanical_records)
+            or any(r.status == "PUBLISHED" and r.pk not in taken_a for r in architecture_records))
+
         botanical = [(f"b:{r.pk}", label(f"{r.common_name} ({r.scientific_name})", r, taken_b))
-                     for r in BotanicalRecord.objects.order_by("common_name")]
+                     for r in botanical_records]
         architecture = [(f"a:{r.pk}", label(r.name, r, taken_a))
-                        for r in ArchitectureRecord.objects.order_by("name")]
+                        for r in architecture_records]
         return [("", "Choose a record")] + (
             [("Botanical records", botanical)] if botanical else []) + (
             [("Architecture records", architecture)] if architecture else [])
@@ -96,6 +121,10 @@ class CollectibleForm(RecordForm):
 
     def clean_model_label(self):
         label = tidy(self.cleaned_data.get("model_label") or "").lower()
+        if label and label not in classifier.model_labels() and label != self.instance.model_label:
+            raise forms.ValidationError(
+                "The PlantDex model doesn't recognise this label. Choose one from the list, "
+                "or \"Not scannable yet\".")
         if label:
             taken = Collectible.objects.filter(model_label=label).exclude(pk=self.instance.pk).first()
             if taken:
